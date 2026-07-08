@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>픽셀 축구 - FC Online 스타일</title>
+  <!-- 둥근모 픽셀 폰트 (한글+영문) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    /* ===== 레트로 픽셀 팔레트 ===== */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #1A1C2C;
+      color: #F4F4F4;
+      font-family: 'Black Han Sans', 'Press Start 2P', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    #app {
+      width: 480px;
+      height: 720px;
+      background: #1A1C2C;
+      position: relative;
+      overflow: hidden;
+      border: 3px solid #FFCD75;
+      box-shadow: 0 0 30px rgba(255,205,117,0.15);
+    }
+    /* ===== 화면 전환 ===== */
+    .screen {
+      display: none;
+      width: 100%;
+      height: 100%;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      position: absolute;
+      top: 0; left: 0;
+    }
+    .screen.active { display: flex; }
+
+    /* ===== 공통 버튼 ===== */
+    .btn {
+      font-family: 'Black Han Sans', sans-serif;
+      background: #FFCD75;
+      color: #1A1C2C;
+      border: none;
+      padding: 14px 28px;
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.1s;
+      width: 100%;
+      max-width: 320px;
+      text-align: center;
+      margin: 6px 0;
+      border-radius: 4px;
+      letter-spacing: 1px;
+    }
+    .btn:hover { background: #F4F4F4; transform: scale(1.03); }
+    .btn:active { transform: scale(0.97); }
+    .btn-sm {
+      padding: 10px 18px;
+      font-size: 14px;
+      max-width: 200px;
+    }
+    .btn-back {
+      background: transparent;
+      color: #FFCD75;
+      border: 2px solid #FFCD75;
+      font-size: 14px;
+      padding: 8px 16px;
+      max-width: 120px;
+      margin-bottom: 12px;
+    }
+    .btn-back:hover { background: #FFCD75; color: #1A1C2C; }
+
+    /* ===== 제목 ===== */
+    .title {
+      font-size: 36px;
+      color: #FFCD75;
+      text-align: center;
+      margin: 20px 0;
+      text-shadow: 3px 3px 0 #EF476F;
+      letter-spacing: 2px;
+    }
+    .subtitle {
+      font-size: 16px;
+      color: #F4F4F4;
+      margin-bottom: 30px;
+      opacity: 0.8;
+    }
+
+    /* ===== 클럽 선택 ===== */
+    .club-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      width: 100%;
+      max-width: 400px;
+      margin-top: 10px;
+    }
+    .club-card {
+      background: #2A2D40;
+      border: 2px solid #3A3D50;
+      border-radius: 8px;
+      padding: 16px 8px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .club-card:hover {
+      border-color: #FFCD75;
+      transform: scale(1.05);
+    }
+    .club-badge {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      margin: 0 auto 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: bold;
+    }
+    .club-name {
+      font-size: 14px;
+      color: #F4F4F4;
+    }
+
+    /* ===== 메뉴 홈 ===== */
+    .menu-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      margin-top: 30px;
+    }
+    .bp-display {
+      font-size: 16px;
+      color: #FFCD75;
+      margin-bottom: 20px;
+      padding: 8px 20px;
+      border: 2px solid #FFCD75;
+      border-radius: 4px;
+    }
+
+    /* ===== 선수등록 / 스쿼드 ===== */
+    .section-title {
+      font-size: 22px;
+      color: #FFCD75;
+      margin: 10px 0 16px;
+    }
+    .pos-group {
+      width: 100%;
+      margin-bottom: 16px;
+    }
+    .pos-label {
+      font-size: 16px;
+      color: #EF476F;
+      margin-bottom: 6px;
+      padding-left: 4px;
+    }
+    .player-card {
+      background: #2A2D40;
+      border: 1px solid #3A3D50;
+      border-radius: 4px;
+      padding: 8px 12px;
+      margin: 4px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+    }
+    .player-card .name { color: #F4F4F4; }
+    .player-card .ovr {
+      background: #FFCD75;
+      color: #1A1C2C;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .player-card .pos-tag {
+      color: #999;
+      font-size: 11px;
+      margin-left: 6px;
+    }
+    .player-card .enhance {
+      color: #22D3EE;
+      font-size: 11px;
+      margin-left: 6px;
+    }
+    .btn-reg {
+      font-size: 11px;
+      padding: 3px 10px;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      font-family: 'Black Han Sans', sans-serif;
+    }
+    .btn-reg.on { background: #22D3EE; color: #1A1C2C; }
+    .btn-reg.off { background: #555; color: #999; }
+    /* ===== 포메이션 필드 ===== */
+    .field {
+      background: #2A5A2A;
+      border: 2px solid #F4F4F4;
+      border-radius: 8px;
+      width: 100%;
+      padding: 10px 10px 4px;
+      margin-bottom: 10px;
+      position: relative;
+      overflow: hidden;
+    }
+    /* 하프웨이 라인 (흰 줄) */
+    .field::before {
+      content: '';
+      position: absolute;
+      top: 50%; left: 0; right: 0;
+      height: 1px;
+      background: rgba(255,255,255,0.25);
+      transform: translateY(-50%);
+    }
+    /* 센터 서클 */
+    .field::after {
+      content: '';
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 32px; height: 32px;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 50%;
+      transform: translate(-50%,-50%);
+    }
+    /* 골문 표시 (위/아래 작은 사각형) */
+    .goal-top, .goal-bottom {
+      position: absolute;
+      left: 50%; transform: translateX(-50%);
+      width: 60px; height: 8px;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.05);
+      z-index: 0;
+    }
+    .goal-top { top: 0; border-top: none; border-radius: 0 0 4px 4px; }
+    .goal-bottom { bottom: 0; border-bottom: none; border-radius: 4px 4px 0 0; }
+    .field-line {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin: 8px 0;
+      position: relative;
+      z-index: 1;
+    }
+    .slot {
+      width: 56px;
+      height: 44px;
+      background: rgba(255,255,255,0.1);
+      border: 1px dashed rgba(255,255,255,0.3);
+      border-radius: 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      cursor: pointer;
+      transition: 0.1s;
+      overflow: hidden;
+    }
+    .slot.filled { background: rgba(255,205,117,0.2); border-color: #FFCD75; border-style: solid; }
+    .slot:hover { transform: scale(1.08); }
+    .slot .s-number { color: #FFCD75; font-size: 12px; font-weight: bold; }
+    .slot .s-name { color: #F4F4F4; font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 50px; }
+    .slot .s-empty { color: #666; font-size: 11px; }
+    .slot-label { color: #999; font-size: 9px; text-align: center; margin-top: 2px; }
+    .bench-area { width: 100%; margin-top: 4px; }
+    .bench-title { font-size: 12px; color: #999; margin-bottom: 4px; }
+
+    /* ===== 스쿼드 뷰어 ===== */
+    .squad-container {
+      width: 100%;
+      overflow-y: auto;
+      flex: 1;
+      padding-right: 4px;
+    }
+    .squad-container::-webkit-scrollbar { width: 4px; }
+    .squad-container::-webkit-scrollbar-thumb { background: #FFCD75; border-radius: 2px; }
+
+    /* ===== 로딩/선택 안내 ===== */
+    .info-text {
+      font-size: 14px;
+      color: #999;
+      text-align: center;
+      margin-top: 30px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- ===== [Screen 0] 클럽 선택 ===== -->
+    <div id="screen-club-select" class="screen active">
+      <div class="title">픽셀 축구</div>
+      <div class="subtitle">⚽ 클럽을 선택하세요</div>
+      <div class="club-grid" id="club-grid"></div>
+      <div class="info-text" id="club-info">클럽을 선택하면 선수단이 지급됩니다</div>
+    </div>
+
+    <!-- ===== [Screen 1] 홈 화면 ===== -->
+    <div id="screen-home" class="screen">
+      <div class="title" style="font-size:28px; margin:10px 0;">픽셀 축구</div>
+      <div class="bp-display" id="bp-display">💰 BP: 10,000</div>
+      <div class="menu-area" id="home-menu"></div>
+      <div style="margin-top:auto;margin-bottom:10px;font-size:11px;color:#555;">v1.0 · 레트로 픽셀</div>
+    </div>
+
+    <!-- ===== [Screen 2] 선수등록 ===== -->
+    <div id="screen-player-reg" class="screen">
+      <button class="btn btn-back" onclick="goHome()">← 홈</button>
+      <div class="section-title">📋 선수등록</div>
+      <button class="btn btn-sm" onclick="showSquad()">🏟 등록 선수 보기</button>
+      <div class="squad-container" id="reg-container"></div>
+    </div>
+
+    <!-- ===== [Screen 3] 스쿼드 보기 ===== -->
+    <div id="screen-squad" class="screen">
+      <button class="btn btn-back" onclick="goPlayerReg()">← 선수등록</button>
+      <div class="section-title">🏟 스쿼드</div>
+      <div class="squad-container" id="squad-container"></div>
+    </div>
+  </div>
+
+  <script>
+  // ============================================================
+  // 1. 데이터 — 클럽과 선수 정보
+  // ============================================================
+  const CLUBS = [
+    {
+      id: 'realmadrid',
+      name: '레알 마드리드',
+      color: '#FFFFFF',
+      textColor: '#1A1C2C',
+      short: 'RM',
+      stars: 5,
+      players: [
+        { name: '티보 쿠르투아', pos: 'GK', number: 1, ovr: 109, cost: 8000 },
+        { name: '안드리 루닌', pos: 'GK', number: 13, ovr: 98, cost: 3000 },
+        { name: '다니 카르바할', pos: 'DF', number: 2, ovr: 105, cost: 6000 },
+        { name: '에데르 밀리탕', pos: 'DF', number: 3, ovr: 106, cost: 6500 },
+        { name: '안토니오 뤼디거', pos: 'DF', number: 22, ovr: 105, cost: 6000 },
+        { name: '다비드 알라바', pos: 'DF', number: 4, ovr: 104, cost: 5500 },
+        { name: '주드 벨링엄', pos: 'MF', number: 5, ovr: 110, cost: 10000 },
+        { name: '페데리코 발베르데', pos: 'MF', number: 8, ovr: 107, cost: 7000 },
+        { name: '에두아르도 카마빙가', pos: 'MF', number: 12, ovr: 102, cost: 4500 },
+        { name: '루카 모드리치', pos: 'MF', number: 10, ovr: 108, cost: 7500 },
+        { name: '킬리안 음바페', pos: 'FW', number: 9, ovr: 111, cost: 12000 },
+        { name: '비니시우스 주니오르', pos: 'FW', number: 7, ovr: 110, cost: 10000 },
+        { name: '호드리구', pos: 'FW', number: 11, ovr: 106, cost: 6500 },
+      ]
+    },
+    {
+      id: 'barcelona',
+      name: '바르셀로나',
+      color: '#A50044',
+      textColor: '#FFFFFF',
+      short: 'FCB',
+      stars: 4.5,
+      players: [
+        { name: '마르크-안드레 테어슈테겐', pos: 'GK', number: 1, ovr: 107, cost: 7000 },
+        { name: '이냐키 페냐', pos: 'GK', number: 13, ovr: 96, cost: 2500 },
+        { name: '쥘 쿤데', pos: 'DF', number: 23, ovr: 104, cost: 5500 },
+        { name: '로날드 아라우호', pos: 'DF', number: 4, ovr: 105, cost: 6000 },
+        { name: '안드레아스 크리스텐센', pos: 'DF', number: 15, ovr: 102, cost: 4500 },
+        { name: '알레한드로 발데', pos: 'DF', number: 3, ovr: 100, cost: 3500 },
+        { name: '페드리', pos: 'MF', number: 8, ovr: 107, cost: 7000 },
+        { name: '가비', pos: 'MF', number: 6, ovr: 103, cost: 5000 },
+        { name: '프렝키 더용', pos: 'MF', number: 21, ovr: 106, cost: 6500 },
+        { name: '일카이 귄도안', pos: 'MF', number: 22, ovr: 105, cost: 6000 },
+        { name: '로베르트 레반도프스키', pos: 'FW', number: 9, ovr: 108, cost: 7500 },
+        { name: '라민 야말', pos: 'FW', number: 19, ovr: 101, cost: 4000 },
+        { name: '페란 토레스', pos: 'FW', number: 7, ovr: 100, cost: 3500 },
+      ]
+    },
+    {
+      id: 'mancity',
+      name: '맨체스터 시티',
+      color: '#6CABDD',
+      textColor: '#1A1C2C',
+      short: 'MCI',
+      stars: 5,
+      players: [
+        { name: '에데르송', pos: 'GK', number: 31, ovr: 108, cost: 7500 },
+        { name: '슈테판 오르테가', pos: 'GK', number: 18, ovr: 97, cost: 2800 },
+        { name: '카일 워커', pos: 'DF', number: 2, ovr: 104, cost: 5500 },
+        { name: '후벵 디아스', pos: 'DF', number: 3, ovr: 108, cost: 7500 },
+        { name: '존 스톤스', pos: 'DF', number: 5, ovr: 103, cost: 5000 },
+        { name: '요슈코 그바르디올', pos: 'DF', number: 24, ovr: 102, cost: 4500 },
+        { name: '케빈 더 브라위너', pos: 'MF', number: 17, ovr: 111, cost: 12000 },
+        { name: '로드리', pos: 'MF', number: 16, ovr: 110, cost: 10000 },
+        { name: '베르나르두 실바', pos: 'MF', number: 20, ovr: 107, cost: 7000 },
+        { name: '필 포든', pos: 'MF', number: 47, ovr: 106, cost: 6500 },
+        { name: '엘링 홀란드', pos: 'FW', number: 9, ovr: 111, cost: 12000 },
+        { name: '제레미 도쿠', pos: 'FW', number: 11, ovr: 102, cost: 4500 },
+        { name: '훌리안 알바레스', pos: 'FW', number: 19, ovr: 104, cost: 5500 },
+      ]
+    },
+    {
+      id: 'manutd',
+      name: '맨체스터 유나이티드',
+      color: '#DA291C',
+      textColor: '#FFFFFF',
+      short: 'MUN',
+      stars: 4,
+      players: [
+        { name: '안드레 오나나', pos: 'GK', number: 24, ovr: 103, cost: 5000 },
+        { name: '알타이 바인디르', pos: 'GK', number: 1, ovr: 95, cost: 2200 },
+        { name: '디오구 달롯', pos: 'DF', number: 20, ovr: 100, cost: 3500 },
+        { name: '라파엘 바란', pos: 'DF', number: 19, ovr: 105, cost: 6000 },
+        { name: '리산드로 마르티네스', pos: 'DF', number: 6, ovr: 103, cost: 5000 },
+        { name: '루크 쇼', pos: 'DF', number: 23, ovr: 102, cost: 4500 },
+        { name: '브루노 페르난데스', pos: 'MF', number: 8, ovr: 108, cost: 7500 },
+        { name: '카세미루', pos: 'MF', number: 18, ovr: 105, cost: 6000 },
+        { name: '메이슨 마운트', pos: 'MF', number: 7, ovr: 102, cost: 4500 },
+        { name: '코비 마이누', pos: 'MF', number: 37, ovr: 98, cost: 3000 },
+        { name: '마커스 래시포드', pos: 'FW', number: 10, ovr: 105, cost: 6000 },
+        { name: '라스무스 호일룬', pos: 'FW', number: 11, ovr: 100, cost: 3500 },
+        { name: '알레한드로 가르나초', pos: 'FW', number: 17, ovr: 99, cost: 3200 },
+      ]
+    },
+    {
+      id: 'chelsea',
+      name: '첼시',
+      color: '#034694',
+      textColor: '#FFFFFF',
+      short: 'CHE',
+      stars: 4,
+      players: [
+        { name: '로베르트 산체스', pos: 'GK', number: 1, ovr: 100, cost: 3500 },
+        { name: '조르즈 멘드스', pos: 'GK', number: 13, ovr: 97, cost: 2800 },
+        { name: '리스 제임스', pos: 'DF', number: 24, ovr: 103, cost: 5000 },
+        { name: '하베르트 케레', pos: 'DF', number: 4, ovr: 102, cost: 4500 },
+        { name: '레비 콜윌', pos: 'DF', number: 26, ovr: 99, cost: 3200 },
+        { name: '마크 쿠쿠렐라', pos: 'DF', number: 3, ovr: 99, cost: 3200 },
+        { name: '엔소 페르난데스', pos: 'MF', number: 8, ovr: 106, cost: 6500 },
+        { name: '모이세스 카이세도', pos: 'MF', number: 25, ovr: 104, cost: 5500 },
+        { name: '코너 갤러거', pos: 'MF', number: 23, ovr: 102, cost: 4500 },
+        { name: '콜 파머', pos: 'MF', number: 20, ovr: 101, cost: 4000 },
+        { name: '니콜라 잭슨', pos: 'FW', number: 15, ovr: 99, cost: 3200 },
+        { name: '미하일로 무드리크', pos: 'FW', number: 10, ovr: 98, cost: 3000 },
+        { name: '라힘 스털링', pos: 'FW', number: 7, ovr: 103, cost: 5000 },
+      ]
+    },
+    {
+      id: 'atletico',
+      name: '아틀레티코 마드리드',
+      color: '#CB3524',
+      textColor: '#FFFFFF',
+      short: 'ATM',
+      stars: 4.5,
+      players: [
+        { name: '얀 오블라크', pos: 'GK', number: 13, ovr: 108, cost: 7500 },
+        { name: '이보 그르비치', pos: 'GK', number: 1, ovr: 96, cost: 2500 },
+        { name: '호세 히메네스', pos: 'DF', number: 2, ovr: 104, cost: 5500 },
+        { name: '마리오 에르모소', pos: 'DF', number: 22, ovr: 102, cost: 4500 },
+        { name: '앙헬 코레아', pos: 'DF', number: 3, ovr: 100, cost: 3500 },
+        { name: '나우엘 몰리나', pos: 'DF', number: 16, ovr: 101, cost: 4000 },
+        { name: '코케', pos: 'MF', number: 6, ovr: 105, cost: 6000 },
+        { name: '로드리고 데 파울', pos: 'MF', number: 5, ovr: 104, cost: 5500 },
+        { name: '사울', pos: 'MF', number: 8, ovr: 102, cost: 4500 },
+        { name: '마르코스 요렌테', pos: 'MF', number: 14, ovr: 103, cost: 5000 },
+        { name: '앙투안 그리즈만', pos: 'FW', number: 7, ovr: 108, cost: 7500 },
+        { name: '알바로 모라타', pos: 'FW', number: 19, ovr: 103, cost: 5000 },
+        { name: '멤피스 데파이', pos: 'FW', number: 9, ovr: 101, cost: 4000 },
+      ]
+    }
+  ];
+
+  // ============================================================
+  // 2. 포메이션 목록
+  // ============================================================
+  const FORMATIONS = [
+    { name: '4-4-2', df: 4, mf: 4, fw: 2 },
+    { name: '4-3-3', df: 4, mf: 3, fw: 3 },
+    { name: '3-4-3', df: 3, mf: 4, fw: 3 },
+    { name: '4-2-3-1', df: 4, mf: 5, fw: 1 },
+    { name: '3-5-2', df: 3, mf: 5, fw: 2 },
+    { name: '5-3-2', df: 5, mf: 3, fw: 2 },
+  ];
+
+  // ============================================================
+  // 3. 게임 상태
+  // ============================================================
+  let state = {
+    clubId: null,           // 선택한 클럽 id
+    bp: 10000,              // 기본 BP
+    squad: [],              // 보유 선수 목록
+    enhanceLevels: {},      // { '선수id': 강화레벨 }
+    formation: '4-4-2',     // 현재 포메이션
+    lineup: {}              // { GK: [id], DF: [id,id..], MF: [..], FW: [..] }
+  };
+
+  // 포메이션에 맞게 라인업 자동 채우기
+  function autoFillLineup() {
+    const f = getFormation(state.formation);
+    const lineup = { GK: [], DF: [], MF: [], FW: [] };
+    // GK 1명
+    const gk = state.squad.find(p => p.pos === 'GK' && p.registered);
+    if (gk) lineup.GK = [gk.id];
+    // DF
+    const dfs = state.squad.filter(p => p.pos === 'DF' && p.registered).slice(0, f.df);
+    lineup.DF = dfs.map(p => p.id);
+    // MF
+    const mfs = state.squad.filter(p => p.pos === 'MF' && p.registered).slice(0, f.mf);
+    lineup.MF = mfs.map(p => p.id);
+    // FW
+    const fws = state.squad.filter(p => p.pos === 'FW' && p.registered).slice(0, f.fw);
+    lineup.FW = fws.map(p => p.id);
+
+    // 기존 라인업에서 같은 포메이션이면 최대한 유지
+    if (state.lineup && state.lineup.GK) {
+      ['GK', 'DF', 'MF', 'FW'].forEach(pos => {
+        const need = pos === 'GK' ? 1 : f[pos.toLowerCase()];
+        const keep = state.lineup[pos].filter(id => state.squad.some(p => p.id === id && p.registered));
+        lineup[pos] = [...keep, ...lineup[pos].filter(id => !keep.includes(id))].slice(0, need);
+      });
+    }
+    state.lineup = lineup;
+  }
+
+  // ============================================================
+  // 3. 화면 전환
+  // ============================================================
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  // ============================================================
+  // 4. 클럽 선택 화면 렌더링
+  // ============================================================
+  function renderClubSelect() {
+    const grid = document.getElementById('club-grid');
+    grid.innerHTML = '';
+    CLUBS.forEach(club => {
+      const card = document.createElement('div');
+      card.className = 'club-card';
+      // 별을 %로 채워서 표시 (예: 4.5별 → 90% 채움)
+      const pct = (club.stars / 5) * 100;
+      card.innerHTML = `
+        <div class="club-badge" style="background:${club.color};color:${club.textColor}">${club.short}</div>
+        <div class="club-name">${club.name}</div>
+        <div style="position:relative;display:inline-block;font-size:13px;margin-top:4px;color:#555;letter-spacing:2px;">
+          ★★★★★
+          <div style="position:absolute;top:0;left:0;overflow:hidden;width:${pct}%;color:#FFCD75;white-space:nowrap;">★★★★★</div>
+        </div>
+      `;
+      card.onclick = () => selectClub(club.id);
+      grid.appendChild(card);
+    });
+  }
+
+  function selectClub(clubId) {
+    const club = CLUBS.find(c => c.id === clubId);
+    if (!club) return;
+    // 클럽 선택 → 선수단 지급 (깊은 복사)
+    state.clubId = clubId;
+    state.squad = club.players.map(p => ({ ...p, id: p.name + '_' + clubId, registered: true }));
+    state.bp = 10000;
+    autoFillLineup();
+    // localStorage에 저장
+    saveState();
+    // 홈으로 이동
+    renderHome();
+    showScreen('screen-home');
+  }
+
+  // ============================================================
+  // 5. 홈 화면 렌더링
+  // ============================================================
+  function renderHome() {
+    const club = CLUBS.find(c => c.id === state.clubId);
+    document.getElementById('bp-display').textContent = `💰 BP: ${state.bp.toLocaleString()}`;
+    const menu = document.getElementById('home-menu');
+    menu.innerHTML = `
+      <div style="margin-bottom:10px;font-size:14px;color:#F4F4F4;">⚡ ${club ? club.name : ''}</div>
+      <button class="btn" onclick="alert('⚽ AI와 경기 — 추후 구현 예정!')">⚽ AI와 경기</button>
+      <button class="btn" onclick="alert('🏪 이적시장 — 추후 구현 예정!')">🏪 이적시장</button>
+      <button class="btn" onclick="alert('⚙️ 설정 — 추후 구현 예정!')">⚙️ 설정</button>
+      <button class="btn" onclick="goPlayerReg()">📋 선수등록</button>
+    `;
+  }
+
+  // ============================================================
+  // 6. 선수등록 → 스쿼드 보기
+  // ============================================================
+  function goPlayerReg() {
+    const container = document.getElementById('reg-container');
+    container.innerHTML = '';
+    const club = CLUBS.find(c => c.id === state.clubId);
+    if (!club) return;
+
+    const positions = ['GK', 'DF', 'MF', 'FW'];
+    const posNames = { GK: '🥅 골키퍼', DF: '🛡 수비수', MF: '🎯 미드필더', FW: '⚡ 공격수' };
+
+    positions.forEach(pos => {
+      const players = state.squad.filter(p => p.pos === pos);
+      if (players.length === 0) return;
+
+      const group = document.createElement('div');
+      group.className = 'pos-group';
+      group.innerHTML = `<div class="pos-label">${posNames[pos]}</div>`;
+
+      players.forEach(p => {
+        const card = document.createElement('div');
+        card.className = 'player-card';
+        card.innerHTML = `
+          <div>
+            <span class="name">${p.name}</span>
+            <span class="pos-tag">${p.pos}</span>
+            <span class="pos-tag">No.${p.number}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span class="ovr">${p.ovr}</span>
+            <button class="btn-reg ${p.registered ? 'on' : 'off'}" data-id="${p.id}">
+              ${p.registered ? '등록' : '미등록'}
+            </button>
+          </div>
+        `;
+        // 등록/미등록 토글
+        card.querySelector('.btn-reg').onclick = (e) => {
+          e.stopPropagation();
+          p.registered = !p.registered;
+          // 미등록 시 라인업에서도 제거
+          if (!p.registered) {
+            for (const pos of Object.keys(state.lineup)) {
+              const idx = state.lineup[pos].indexOf(p.id);
+              if (idx !== -1) state.lineup[pos].splice(idx, 1);
+            }
+          }
+          autoFillLineup(); // 빈자리 채우기
+          saveState();
+          goPlayerReg(); // 다시 그리기
+        };
+        group.appendChild(card);
+      });
+
+      container.appendChild(group);
+    });
+
+    showScreen('screen-player-reg');
+  }
+
+  function goHome() {
+    renderHome();
+    showScreen('screen-home');
+  }
+
+  function getFormation(name) {
+    return FORMATIONS.find(f => f.name === name) || FORMATIONS[0];
+  }
+
+  function changeFormation(name) {
+    state.formation = name;
+    autoFillLineup();
+    saveState();
+    showSquad();
+  }
+
+  // 라인업에 속한 선수인지 확인
+  function isInLineup(playerId) {
+    return Object.values(state.lineup).some(arr => arr.includes(playerId));
+  }
+
+  // 드래그 앤 드롭용 데이터
+  let dragData = { playerId: null, sourcePos: null, sourceIdx: null, fromBench: false };
+
+  // 선수 클릭 → 라인업에 없으면 자기 포지션 빈자리에 추가, 있으면 제거
+  function toggleLineup(player) {
+    if (isInLineup(player.id)) {
+      for (const pos of Object.keys(state.lineup)) {
+        const idx = state.lineup[pos].indexOf(player.id);
+        if (idx !== -1) { state.lineup[pos].splice(idx, 1); break; }
+      }
+    } else {
+      const f = getFormation(state.formation);
+      const posMap = { GK: 'GK', DF: 'DF', MF: 'MF', FW: 'FW' };
+      const targetPos = posMap[player.pos];
+      const maxSlots = targetPos === 'GK' ? 1 : f[targetPos.toLowerCase()];
+      if (state.lineup[targetPos].length < maxSlots) {
+        state.lineup[targetPos].push(player.id);
+      }
+    }
+    saveState();
+    showSquad();
+  }
+
+  // 드래그 시작
+  function onDragStart(e, playerId, pos, idx, fromBench) {
+    dragData = { playerId, sourcePos: pos, sourceIdx: idx, fromBench };
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', playerId);
+  }
+
+  // 드롭 처리
+  function onDropToSlot(e, targetPos, targetIdx) {
+    e.preventDefault();
+    const { playerId, sourcePos, sourceIdx, fromBench } = dragData;
+    if (!playerId) return;
+    const targetPid = state.lineup[targetPos]?.[targetIdx];
+
+    if (fromBench) {
+      // 벤치 → 필드: 빈자리면 추가, 있으면 교체
+      if (!targetPid) {
+        state.lineup[targetPos][targetIdx] = playerId;
+      } else {
+        // 교체: 벤치 선수 넣고, 원래 있던 선수는 벤치로
+        state.lineup[targetPos][targetIdx] = playerId;
+      }
+    } else {
+      // 필드 → 필드: 서로 위치 교환 (swap)
+      state.lineup[sourcePos][sourceIdx] = targetPid;
+      state.lineup[targetPos][targetIdx] = playerId;
+    }
+    dragData = { playerId: null, sourcePos: null, sourceIdx: null, fromBench: false };
+    saveState();
+    showSquad();
+  }
+
+  function showSquad() {
+    const container = document.getElementById('squad-container');
+    container.innerHTML = '';
+    const club = CLUBS.find(c => c.id === state.clubId);
+    if (!club) return;
+
+    const formation = getFormation(state.formation);
+
+    // 포메이션 선택 버튼
+    const formBar = document.createElement('div');
+    formBar.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;justify-content:center;';
+    FORMATIONS.forEach(f => {
+      const btn = document.createElement('button');
+      btn.style.cssText = `padding:4px 8px;font-size:11px;font-family:'Black Han Sans',sans-serif;border:none;border-radius:3px;cursor:pointer;${f.name === state.formation ? 'background:#FFCD75;color:#1A1C2C;' : 'background:#2A2D40;color:#F4F4F4;border:1px solid #3A3D50;'}`;
+      btn.textContent = f.name;
+      btn.onclick = () => changeFormation(f.name);
+      formBar.appendChild(btn);
+    });
+    container.appendChild(formBar);
+
+    // ===== 필드 =====
+    const field = document.createElement('div');
+    field.className = 'field';
+    // 골문 표시
+    const goalTop = document.createElement('div');
+    goalTop.className = 'goal-top';
+    field.appendChild(goalTop);
+    const goalBottom = document.createElement('div');
+    goalBottom.className = 'goal-bottom';
+    field.appendChild(goalBottom);
+
+    const posOrder = ['FW', 'MF', 'DF', 'GK'];
+    const posLabels = { FW: 'FW', MF: 'MF', DF: 'DF', GK: 'GK' };
+
+    posOrder.forEach(pos => {
+      const line = document.createElement('div');
+      line.className = 'field-line';
+      const slotIds = state.lineup[pos] || [];
+      const needSlots = pos === 'GK' ? 1 : formation[pos.toLowerCase()];
+      for (let i = 0; i < needSlots; i++) {
+        const slot = document.createElement('div');
+        const pid = slotIds[i];
+        const player = pid ? state.squad.find(p => p.id === pid) : null;
+        if (player) {
+          slot.className = 'slot filled';
+          slot.draggable = true;
+          slot.innerHTML = `<span class="s-number">${player.number}</span><span class="s-name">${player.name}</span>`;
+          slot.title = `${player.name} — 드래그해서 자리바꾸기, 클릭하면 벤치`;
+          // 드래그 시작
+          slot.ondragstart = (e) => onDragStart(e, player.id, pos, i, false);
+        } else {
+          slot.className = 'slot';
+          slot.innerHTML = `<span class="s-empty">---</span>`;
+          slot.title = '빈 자리';
+        }
+        // 드래그 허용 + 드롭 처리
+        slot.ondragover = (e) => e.preventDefault();
+        slot.ondrop = (e) => onDropToSlot(e, pos, i);
+        // 클릭: 필드 선수 → 벤치
+        slot.onclick = () => { if (player) toggleLineup(player); };
+        line.appendChild(slot);
+      }
+      field.appendChild(line);
+      const lbl = document.createElement('div');
+      lbl.className = 'slot-label';
+      lbl.textContent = posLabels[pos];
+      field.appendChild(lbl);
+    });
+
+    container.appendChild(field);
+
+    // ===== 벤치 (등록됐지만 라인업에 없는 선수) =====
+    const benchPlayers = state.squad.filter(p => p.registered && !isInLineup(p.id));
+    if (benchPlayers.length > 0) {
+      const benchArea = document.createElement('div');
+      benchArea.className = 'bench-area';
+      benchArea.innerHTML = `<div class="bench-title">🧑‍🤝‍🧑 벤치 (${benchPlayers.length}명) — 드래그해서 필드배치, 클릭하면 자동배치</div>`;
+      benchPlayers.forEach(p => {
+        const card = document.createElement('div');
+        card.className = 'player-card';
+        card.style.cursor = 'grab';
+        card.draggable = true;
+        card.innerHTML = `
+          <div>
+            <span class="name">${p.name}</span>
+            <span class="pos-tag">${p.pos}</span>
+            <span class="pos-tag">No.${p.number}</span>
+          </div>
+          <div>
+            <span class="enhance">★${state.enhanceLevels[p.id] || 1}</span>
+            <span class="ovr">${p.ovr}</span>
+          </div>
+        `;
+        card.ondragstart = (e) => onDragStart(e, p.id, null, null, true);
+        card.onclick = () => toggleLineup(p);
+        benchArea.appendChild(card);
+      });
+      container.appendChild(benchArea);
+    } else {
+      const empty = document.createElement('div');
+      empty.className = 'bench-area';
+      empty.innerHTML = '<div class="bench-title" style="color:#555;">✅ 모든 선수가 필드에 있습니다</div>';
+      container.appendChild(empty);
+    }
+
+    const onField = state.squad.filter(p => isInLineup(p.id));
+    const summary = document.createElement('div');
+    summary.style.cssText = 'text-align:center;font-size:11px;color:#555;margin-top:8px;';
+    summary.textContent = `필드 ${onField.length}명 / 등록 ${state.squad.filter(p=>p.registered).length}명`;
+    container.appendChild(summary);
+
+    showScreen('screen-squad');
+  }
+
+  // ============================================================
+  // 7. 저장 (localStorage)
+  // ============================================================
+  function saveState() {
+    try {
+      localStorage.setItem('pixelSoccer', JSON.stringify(state));
+    } catch(e) {
+      // 저장 실패 무시
+    }
+  }
+
+  function loadState() {
+    try {
+      const saved = localStorage.getItem('pixelSoccer');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // 클럽이 아직 존재하는지 확인
+        const clubExists = CLUBS.some(c => c.id === parsed.clubId);
+        if (clubExists && parsed.squad && parsed.squad.length > 0) {
+          state = parsed;
+          // 예전 저장 데이터에 lineup/formation이 없으면 새로 생성
+          if (!state.formation) state.formation = '4-4-2';
+          if (!state.lineup || !state.lineup.GK) autoFillLineup();
+          return true;
+        }
+      }
+    } catch(e) {}
+    return false;
+  }
+
+  // ============================================================
+  // 8. 게임 시작
+  // ============================================================
+  function init() {
+    // 저장된 상태가 있으면 홈으로, 없으면 클럽 선택
+    if (loadState()) {
+      renderHome();
+      showScreen('screen-home');
+    } else {
+      renderClubSelect();
+      showScreen('screen-club-select');
+    }
+  }
+
+  init();
+  </script>
+</body>
+</html>
