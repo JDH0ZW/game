@@ -1481,10 +1481,13 @@
     GAME.aiTeam.forEach((p, idx) => {
       const home = getPositionOnField(p.pos, idx, GAME.aiTeam.length, false);
 
-      // 킥오프 대기
+      // 킥오프 대기 — 자기 진영에 머물기
       if (GAME.kickoffTimer > 0) {
         p.x += (home.x - p.x) * 0.05;
         p.y += (home.y - p.y) * 0.05;
+        // AI는 오른쪽 진영(x>=400), 내팀은 왼쪽 진영(x<=400)에만
+        if (p.team === 'ai') p.x = Math.max(400, p.x);
+        else p.x = Math.min(400, p.x);
         clampPlayer(p);
         if (GAME.hasBall === p.id) { GAME.ball.x = p.x; GAME.ball.y = p.y + 10; GAME.ball.vx = 0; GAME.ball.vy = 0; }
         return;
@@ -1645,6 +1648,16 @@
     GAME.myTeam.forEach((p, i) => {
       if (i === GAME.controlledIdx) return;
       const home = getPositionOnField(p.pos, i, GAME.myTeam.length, true);
+
+      // 킥오프 대기 — 왼쪽 진영(x<=400)에 머물기
+      if (GAME.kickoffTimer > 0) {
+        p.x += (home.x - p.x) * 0.03;
+        p.y += (home.y - p.y) * 0.03;
+        p.x = Math.min(400, p.x);
+        clampPlayer(p);
+        if (GAME.hasBall === p.id) { GAME.ball.x = p.x; GAME.ball.y = p.y - 10; GAME.ball.vx = 0; GAME.ball.vy = 0; }
+        return;
+      }
 
       if (p.pos === 'GK') {
         // 내 GK — 공 위치 따라 상하 이동 (왼쪽 골대)
