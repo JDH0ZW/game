@@ -1249,7 +1249,7 @@
         clampPlayer(ctrl);
         // 공을 가졌을 때 — 질주 시 공이 살짝 앞으로
         if (GAME.hasBall === ctrl.id) {
-          if (sprintMul > 1) {
+          if (speedMul > 1) {
             GAME.ball.x += (ctrl.vx * 1.5 - GAME.ball.vx * 0.5);
             GAME.ball.y += (ctrl.vy * 1.5 - GAME.ball.vy * 0.5);
             GAME.ball.vx += (ctrl.vx * 0.3);
