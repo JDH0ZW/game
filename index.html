@@ -1139,9 +1139,9 @@
   }
 
   function getPositionOnField(pos, idx, total, isMyTeam) {
-    const fieldW = 760;
+    const fieldW = 544;
     const fieldH = 340;
-    const offsetX = 20;
+    const offsetX = 128;
     const offsetY = 60;
 
     // 좌우 레이아웃: X축이 전진 방향
@@ -1340,7 +1340,7 @@
         if (dDown && notCharging('D')) {
           const ballDist = dist(ctrl.x, ctrl.y, GAME.ball.x, GAME.ball.y);
           if (ballDist < 40) {
-            const dx = 795 - ctrl.x;
+            const dx = 687 - ctrl.x;
             const dy = (230 + (Math.random() - 0.5) * 100) - ctrl.y;
             const d = Math.sqrt(dx*dx + dy*dy) || 1;
             GAME.ball.vx = (dx/d) * 400;
@@ -1423,10 +1423,11 @@
     GAME.ball.vy *= 0.98;
 
     // 공이 필드 밖으로 (골 판정) — 좌우 레이아웃
-    const goalYMin = 165; // fy(60)+fh/2(170)-65
-    const goalYMax = 295; // fy(60)+fh/2(170)+65
-    if (GAME.ball.x < 10) {
-      // 왼쪽 → 내 골대
+    const fx = 128, fw = 544;
+    const goalYMin = 165; // fy 60 + fh/2 170 - 65
+    const goalYMax = 295; // fy 60 + fh/2 170 + 65
+    if (GAME.ball.x < fx - 10) {
+      // 왼쪽 (fx-10 = 118) → 내 골대
       if (GAME.ball.y > goalYMin && GAME.ball.y < goalYMax) {
         GAME.score.ai++;
         resetAfterGoal(false);
@@ -1434,8 +1435,8 @@
         GAME.ball = { x: 400, y: 225, vx: 0, vy: 0 };
       }
     }
-    if (GAME.ball.x > 790) {
-      // 오른쪽 → AI 골대
+    if (GAME.ball.x > fx + fw + 10) {
+      // 오른쪽 (fx+fw+10 = 682) → AI 골대
       if (GAME.ball.y > goalYMin && GAME.ball.y < goalYMax) {
         GAME.score.me++;
         resetAfterGoal(true);
@@ -1476,7 +1477,7 @@
 
     // AI 팀 — 포지션 기반 움직임 (개선)
     // 공이 내 진영(아래)에 가까울수록 AI 수비가 더 내려옴
-    const ballPressure = Math.max(0, Math.min(1, (700 - GAME.ball.x) / 600));
+    const ballPressure = Math.max(0, Math.min(1, (672 - GAME.ball.x) / 544));
 
     GAME.aiTeam.forEach((p, idx) => {
       const home = getPositionOnField(p.pos, idx, GAME.aiTeam.length, false);
@@ -1500,13 +1501,13 @@
         // === 공 소유 ===
         // 수비수 근처면 패스, 아니면 드리블
         const nearDef = GAME.myTeam.filter(m => dist(p.x, p.y, m.x, m.y) < 80);
-        const canShoot = p.x < 150;
+        const canShoot = p.x < 258; // fx(128) + 130
         const openTeammates = GAME.aiTeam.filter(t => t.id !== p.id && dist(p.x, p.y, t.x, t.y) < 350);
 
         if (canShoot && Math.random() < 0.08) {
           // 슛 (왼쪽 내 골대 방향)
           const targetY = 230 + (Math.random() - 0.5) * 70;
-          const sx = (5 - p.x);
+          const sx = (118 - p.x); // fx - 10
           const sy = (targetY - p.y);
           const sd = Math.sqrt(sx*sx + sy*sy) || 1;
           GAME.ball.vx = (sx/sd) * (450 + Math.random() * 80);
@@ -1549,8 +1550,8 @@
           const targetGkY = goalCenterY + (GAME.ball.y - goalCenterY) * 0.3;
           p.y += (targetGkY - p.y) * 0.1;
           // 공이 위험(왼쪽)이면 약간 전진
-          if (GAME.ball.x < 250) {
-            const fwdX = 760 + (GAME.ball.x - 250) * 0.2;
+          if (GAME.ball.x < 291) { // fx + fw*0.3
+            const fwdX = 672 + (GAME.ball.x - 291) * 0.2;
             p.x += (fwdX - p.x) * 0.05;
           } else {
             p.x += (home.x - p.x) * 0.05;
@@ -1585,7 +1586,7 @@
             // 수비수 — 내 선수 마킹 (공과 내 선수 사이, 오른쪽 수비 지역 내)
             const targetX = (GAME.ball.x + myClosest.x) / 2;
             const targetY = (GAME.ball.y + myClosest.y) / 2;
-            const clampX = Math.max(home.x - 150, Math.min(790, targetX));
+            const clampX = Math.max(home.x - 150, Math.min(682, targetX)); // fx+fw+10
             p.x += (clampX - p.x) * 0.04;
             p.y += (targetY - p.y) * 0.04;
             // 너무 멀리 안 나가게
@@ -1595,7 +1596,7 @@
             }
           } else if (isForward && GAME.ball.x > 450) {
             // 공격수 — 공이 수비 지역(오른쪽)에 있을 때 전진 (왼쪽으로)
-            const runX = Math.max(10, home.x - 100);
+            const runX = Math.max(118, home.x - 100); // fx - 10
             p.x += (runX - p.x) * 0.04;
             p.y += (home.y - p.y) * 0.04;
           } else {
@@ -1644,7 +1645,7 @@
     }
 
     // 내 팀 AI (조종 외 선수) — 공에 반응하며 위치 유지
-    const ballXAdvance = Math.max(0, Math.min(1, (GAME.ball.x - 20) / 720));
+    const ballXAdvance = Math.max(0, Math.min(1, (GAME.ball.x - 128) / 544));
     GAME.myTeam.forEach((p, i) => {
       if (i === GAME.controlledIdx) return;
       const home = getPositionOnField(p.pos, i, GAME.myTeam.length, true);
@@ -1702,7 +1703,7 @@
   }
 
   function clampPlayer(p) {
-    p.x = Math.max(5, Math.min(795, p.x));
+    p.x = Math.max(113, Math.min(687, p.x)); // fx-15 ~ fx+fw+15
     p.y = Math.max(65, Math.min(395, p.y));
   }
 
@@ -1880,7 +1881,7 @@
     const ctrl = GAME.myTeam[GAME.controlledIdx];
     if (!ctrl) return;
     const targetY = 230 + (Math.random() - 0.5) * 80;
-    const dx = 795 - ctrl.x;
+    const dx = 687 - ctrl.x;
     const dy = targetY - ctrl.y;
     const d = Math.sqrt(dx*dx + dy*dy);
     const speed = 420 * (0.5 + power * 0.7);
@@ -1895,7 +1896,7 @@
     // 감아차기 — 골대 구석으로 휘어짐 (정확도↑ 속도↓)
     const corner = Math.random() > 0.5 ? 180 : 280;
     const targetY = corner + (Math.random() - 0.5) * 20;
-    const dx = 795 - ctrl.x;
+    const dx = 687 - ctrl.x;
     const dy = targetY - ctrl.y;
     const d = Math.sqrt(dx*dx + dy*dy);
     const speed = 360 * (0.5 + power * 0.7);
@@ -1911,7 +1912,7 @@
     if (!ctrl) return;
     // 칩슛 — 높은 궤적 (느리지만 GK 키 넘김)
     const targetY = 230 + (Math.random() - 0.5) * 60;
-    const dx = 795 - ctrl.x;
+    const dx = 687 - ctrl.x;
     const dy = targetY - ctrl.y;
     const d = Math.sqrt(dx*dx + dy*dy);
     const speed = 300 * (0.5 + power * 0.7);
@@ -2019,9 +2020,9 @@
     ctx.scale(cam.zoom, cam.zoom);    // 줌
     ctx.translate(-cam.x, -cam.y);    // 카메라 위치로 이동
 
-    // ===== 필드 (FC Online 스타일) =====
-    const fx = 20, fy = 60, fw = 760, fh = 340;
-    const cx = fx + fw/2, cy = fy + fh/2; // 센터
+    // ===== 필드 (1.6:1 비율, FC Online 스타일) =====
+    const fx = 128, fy = 60, fw = 544, fh = 340;
+    const cx = fx + fw/2, cy = fy + fh/2; // 센터 (400, 230)
     const goalH = 120;
 
     // 잔디 줄무늬 (밝은/어두운 초록 교차)
@@ -2030,7 +2031,7 @@
       ctx.fillRect(fx, fy + i, fw, 42);
     }
 
-    // 필드 테두리 (약간 두껍게)
+    // 필드 테두리
     ctx.strokeStyle = 'rgba(255,255,255,0.35)';
     ctx.lineWidth = 1.5;
     ctx.strokeRect(fx, fy, fw, fh);
@@ -2042,34 +2043,34 @@
     ctx.lineTo(cx, fy + fh);
     ctx.stroke();
 
-    // 센터 서클 (반지름 66px — 실제 비율 9.15m)
+    // 센터 서클 (반지름 fw*0.087 ≈ 47px — 실제 9.15m 비율)
+    const circleR = Math.round(fw * 0.087);
     ctx.beginPath();
-    ctx.arc(cx, cy, 66, 0, Math.PI*2);
+    ctx.arc(cx, cy, circleR, 0, Math.PI*2);
     ctx.stroke();
 
-    // 센터 하프웨이 마크
+    // 센터 마크
     ctx.fillStyle = 'rgba(255,255,255,0.35)';
     ctx.beginPath();
     ctx.arc(cx, cy, 3, 0, Math.PI*2);
     ctx.fill();
 
     // === 페널티 박스 (18야드) ===
-    const paW = 125;  // 16.5m 비율
-    const paH = 150;  // 40.3m 비율
+    const paW = Math.round(fw * 0.165);  // 90px
+    const paH = Math.round(fh * 0.44);   // 150px
     const paY = cy - paH/2;
-    // 왼쪽
     ctx.strokeRect(fx, paY, paW, paH);
-    // 오른쪽
     ctx.strokeRect(fx + fw - paW, paY, paW, paH);
 
     // === 골 에어리어 (6야드) ===
-    const gaW = 42, gaH = 61;
+    const gaW = Math.round(fw * 0.055); // 30px
+    const gaH = Math.round(fh * 0.18);  // 61px
     const gaY = cy - gaH/2;
     ctx.strokeRect(fx, gaY, gaW, gaH);
     ctx.strokeRect(fx + fw - gaW, gaY, gaW, gaH);
 
     // === 페널티 마크 (11m) ===
-    const pmDist = 80; // 760 * 0.105
+    const pmDist = Math.round(fw * 0.105); // 57px
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
     ctx.beginPath();
     ctx.arc(fx + pmDist, cy, 3, 0, Math.PI*2);
@@ -2078,7 +2079,7 @@
     ctx.arc(fx + fw - pmDist, cy, 3, 0, Math.PI*2);
     ctx.fill();
 
-    // === 페널티 아크 (벤치 바깥) ===
+    // === 페널티 아크 ===
     ctx.strokeStyle = 'rgba(255,255,255,0.2)';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -2106,12 +2107,9 @@
     // === 골대 (양옆) ===
     ctx.strokeStyle = '#FFFFFF';
     ctx.lineWidth = 3;
-    const postInset = 2; // 골대 안쪽 살짝
-    // 왼쪽 골대
+    const postInset = 2;
     ctx.strokeRect(fx - postInset, cy - goalH/2, 3, goalH);
-    // 오른쪽 골대
     ctx.strokeRect(fx + fw - postInset, cy - goalH/2, 3, goalH);
-    // 골대 윗가로대 (크로스바)
     ctx.strokeRect(fx - 6, cy - goalH/2 - 1, 9, 2);
     ctx.strokeRect(fx + fw - 3, cy - goalH/2 - 1, 9, 2);
 
