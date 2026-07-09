@@ -1047,6 +1047,7 @@
     skillCooldown: 0,  // 개인기 쿨다운
     charge: null,      // { key, power, dir, zHold, qHold } — 파워 게이지
     CHARGE_SPEED: 1.2, // 게이지 차는 속도 (0→1까지 초)
+    camera: { x: 400, y: 225, tx: 400, ty: 225, zoom: 1.7 },
   };
 
   function getClubColor(clubId) {
@@ -1085,6 +1086,8 @@
     GAME.ballCurve = 0;
     GAME.skillCooldown = 0;
     GAME.charge = null;
+    GAME.camera.x = 400; GAME.camera.y = 225;
+    GAME.camera.tx = 400; GAME.camera.ty = 225;
 
     // 내 팀 선수 배치
     const f = getFormation(state.formation);
@@ -1671,6 +1674,18 @@
       p.y += (targetY - p.y) * 0.03;
       clampPlayer(p);
     });
+
+    // ===== 카메라: 공 따라가기 (부드러운 보간) =====
+    const cam = GAME.camera;
+    cam.tx = GAME.ball.x;
+    cam.ty = GAME.ball.y;
+    const lerpSpeed = 3.5;
+    cam.x += (cam.tx - cam.x) * Math.min(1, lerpSpeed * dt);
+    cam.y += (cam.ty - cam.y) * Math.min(1, lerpSpeed * dt);
+    const viewW = 800 / cam.zoom;
+    const viewH = 450 / cam.zoom;
+    cam.x = Math.max(viewW/2, Math.min(cam.x, 800 - viewW/2));
+    cam.y = Math.max(viewH/2, Math.min(cam.y, 450 - viewH/2));
   }
 
   function clampPlayer(p) {
@@ -1977,70 +1992,42 @@
 
   // ===== 렌더링 =====
   function renderGame() {
-    const ctx = GAME._offCtx; // 오프스크린에 먼저 그리고
+    const ctx = GAME._offCtx;
+    const cam = GAME.camera;
 
     ctx.clearRect(0, 0, 800, 450);
-
+    // 배경 (screen space — 항상 전체 채움)
     ctx.fillStyle = '#1A1C2C';
     ctx.fillRect(0, 0, 800, 450);
 
+    // ===== Camera transform 적용 =====
+    ctx.save();
+    ctx.translate(400, 225);          // 화면 중앙
+    ctx.scale(cam.zoom, cam.zoom);    // 줌
+    ctx.translate(-cam.x, -cam.y);    // 카메라 위치로 이동
+
+    // ===== 필드 =====
     const fx = 20, fy = 60, fw = 760, fh = 340;
     ctx.fillStyle = '#2A5A2A';
     ctx.fillRect(fx, fy, fw, fh);
     ctx.strokeStyle = 'rgba(255,255,255,0.3)';
     ctx.lineWidth = 1;
     ctx.strokeRect(fx, fy, fw, fh);
-
-    // 하프웨이 라인 (세로)
+    // 하프웨이 라인
     ctx.beginPath();
     ctx.moveTo(fx + fw/2, fy);
     ctx.lineTo(fx + fw/2, fy + fh);
     ctx.stroke();
-
     // 센터 서클
     ctx.beginPath();
     ctx.arc(fx+fw/2, fy+fh/2, 30, 0, Math.PI*2);
     ctx.stroke();
-
     // 골대
     ctx.strokeStyle = 'rgba(255,255,255,0.5)';
     ctx.lineWidth = 2;
-    // 왼쪽 골대 (내 골대)
     const goalH = 120;
     ctx.strokeRect(fx-5, fy+fh/2 - goalH/2, 5, goalH);
-    // 오른쪽 골대 (AI 골대)
     ctx.strokeRect(fx+fw, fy+fh/2 - goalH/2, 5, goalH);
-
-    // ===== HUD =====
-    ctx.fillStyle = '#FFCD75';
-    ctx.font = '16px "Jua", sans-serif';
-    ctx.textAlign = 'center';
-    const aiClubName = GAME.aiClubName || '???';
-    ctx.fillText(`${getClubName(state.clubId)} ${GAME.score.me} : ${GAME.score.ai} ${aiClubName}`, 400, 25);
-
-    ctx.font = '14px "Jua", sans-serif';
-    ctx.fillStyle = '#F4F4F4';
-    const halfText = GAME.half === 1 ? '전반' : '후반';
-    ctx.fillText(`${halfText} ${Math.floor(GAME.time)}초`, 400, 48);
-
-    // ===== 디버그: 현재 상태 =====
-    ctx.fillStyle = 'rgba(0,0,0,0.8)';
-    ctx.fillRect(5, 50, 350, 130);
-    ctx.fillStyle = '#FFCD75';
-    ctx.font = '10px "Jua", sans-serif';
-    ctx.textAlign = 'left';
-    const ctrlP = GAME.myTeam[GAME.controlledIdx];
-    const ctrlId = ctrlP?.id || 'none';
-    const ballDist = ctrlP ? Math.floor(dist(ctrlP.x, ctrlP.y, GAME.ball.x, GAME.ball.y)) : -1;
-    ctx.fillText('hasBall: ' + (GAME.hasBall ? GAME.hasBall.slice(0,15) : 'null'), 10, 63);
-    ctx.fillText('ctrl: ' + ctrlId.slice(0,15) + ' idx:' + GAME.controlledIdx, 10, 77);
-    ctx.fillText('공거리:' + ballDist + 'px  match:' + (GAME.hasBall === ctrlId ? 'OK' : 'NO'), 10, 91);
-    const lk = GAME.lastKey;
-    ctx.fillText('마지막키: ' + (lk ? (lk.code+' ('+lk.key+')') : '없음'), 10, 105);
-    ctx.fillText('S:' + (GAME.keys['KeyS']||GAME.keys['s']?'Y':'n') + ' D:' + (GAME.keys['KeyD']||GAME.keys['d']?'Y':'n') + ' W:' + (GAME.keys['KeyW']||GAME.keys['w']?'Y':'n') + ' A:' + (GAME.keys['KeyA']||GAME.keys['a']?'Y':'n'), 10, 119);
-    ctx.fillText('내팀위치: ' + GAME.myTeam.map((p,i)=>i+':'+Math.round(p.x)+','+Math.round(p.y)).join(' '), 10, 133);
-    ctx.fillText('공:' + Math.round(GAME.ball.x)+','+Math.round(GAME.ball.y), 10, 147);
-    ctx.fillText('canvas:' + GAME.canvas.width+'x'+GAME.canvas.height, 10, 161);
 
     // ===== 공 =====
     ctx.beginPath();
@@ -2070,21 +2057,17 @@
         const barW = 60, barH = 8;
         const bx = p.x - barW / 2;
         const by = p.y - 32;
-        // 배경
         ctx.fillStyle = 'rgba(0,0,0,0.7)';
         ctx.fillRect(bx, by, barW, barH);
-        // 게이지
         const grad = ctx.createLinearGradient(bx, by, bx + barW, by);
         grad.addColorStop(0, '#22C55E');
         grad.addColorStop(0.5, '#EAB308');
         grad.addColorStop(1, '#EF4444');
         ctx.fillStyle = grad;
         ctx.fillRect(bx, by, barW * GAME.charge.power, barH);
-        // 테두리
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 1;
         ctx.strokeRect(bx, by, barW, barH);
-        // % 텍스트
         ctx.fillStyle = '#fff';
         ctx.font = 'bold 8px "Jua", sans-serif';
         ctx.textAlign = 'center';
@@ -2093,7 +2076,42 @@
       }
     }
 
-    // ===== 조작 안내 =====
+    ctx.restore();  // ← 카메라 transform 종료
+
+    // ===== Screen-space UI (HUD, 디버그, 안내) =====
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+    // 점수판
+    ctx.fillStyle = '#FFCD75';
+    ctx.font = '16px "Jua", sans-serif';
+    ctx.textAlign = 'center';
+    const aiClubName = GAME.aiClubName || '???';
+    ctx.fillText(`${getClubName(state.clubId)} ${GAME.score.me} : ${GAME.score.ai} ${aiClubName}`, 400, 25);
+    ctx.font = '14px "Jua", sans-serif';
+    ctx.fillStyle = '#F4F4F4';
+    const halfText = GAME.half === 1 ? '전반' : '후반';
+    ctx.fillText(`${halfText} ${Math.floor(GAME.time)}초`, 400, 48);
+
+    // 디버그 정보
+    ctx.fillStyle = 'rgba(0,0,0,0.8)';
+    ctx.fillRect(5, 50, 350, 130);
+    ctx.fillStyle = '#FFCD75';
+    ctx.font = '10px "Jua", sans-serif';
+    ctx.textAlign = 'left';
+    const ctrlP = GAME.myTeam[GAME.controlledIdx];
+    const ctrlId = ctrlP?.id || 'none';
+    const ballDist = ctrlP ? Math.floor(dist(ctrlP.x, ctrlP.y, GAME.ball.x, GAME.ball.y)) : -1;
+    ctx.fillText('hasBall: ' + (GAME.hasBall ? GAME.hasBall.slice(0,15) : 'null'), 10, 63);
+    ctx.fillText('ctrl: ' + ctrlId.slice(0,15) + ' idx:' + GAME.controlledIdx, 10, 77);
+    ctx.fillText('공거리:' + ballDist + 'px  match:' + (GAME.hasBall === ctrlId ? 'OK' : 'NO'), 10, 91);
+    const lk = GAME.lastKey;
+    ctx.fillText('마지막키: ' + (lk ? (lk.code+' ('+lk.key+')') : '없음'), 10, 105);
+    ctx.fillText('S:' + (GAME.keys['KeyS']||GAME.keys['s']?'Y':'n') + ' D:' + (GAME.keys['KeyD']||GAME.keys['d']?'Y':'n') + ' W:' + (GAME.keys['KeyW']||GAME.keys['w']?'Y':'n') + ' A:' + (GAME.keys['KeyA']||GAME.keys['a']?'Y':'n'), 10, 119);
+    ctx.fillText('내팀위치: ' + GAME.myTeam.map((p,i)=>i+':'+Math.round(p.x)+','+Math.round(p.y)).join(' '), 10, 133);
+    ctx.fillText('공:' + Math.round(GAME.ball.x)+','+Math.round(GAME.ball.y), 10, 147);
+    ctx.fillText('cam:' + Math.round(cam.x)+','+Math.round(cam.y)+' z:'+cam.zoom.toFixed(1), 10, 161);
+
+    // 조작 안내
     ctx.fillStyle = 'rgba(255,255,255,0.4)';
     ctx.font = '10px "Jua", sans-serif';
     ctx.textAlign = 'left';
