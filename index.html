@@ -2019,28 +2019,101 @@
     ctx.scale(cam.zoom, cam.zoom);    // 줌
     ctx.translate(-cam.x, -cam.y);    // 카메라 위치로 이동
 
-    // ===== 필드 =====
+    // ===== 필드 (FC Online 스타일) =====
     const fx = 20, fy = 60, fw = 760, fh = 340;
-    ctx.fillStyle = '#2A5A2A';
-    ctx.fillRect(fx, fy, fw, fh);
-    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-    ctx.lineWidth = 1;
+    const cx = fx + fw/2, cy = fy + fh/2; // 센터
+    const goalH = 120;
+
+    // 잔디 줄무늬 (밝은/어두운 초록 교차)
+    for (let i = 0; i < fh; i += 42) {
+      ctx.fillStyle = i % 84 === 0 ? '#2A5A2A' : '#226622';
+      ctx.fillRect(fx, fy + i, fw, 42);
+    }
+
+    // 필드 테두리 (약간 두껍게)
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+    ctx.lineWidth = 1.5;
     ctx.strokeRect(fx, fy, fw, fh);
+
     // 하프웨이 라인
     ctx.beginPath();
-    ctx.moveTo(fx + fw/2, fy);
-    ctx.lineTo(fx + fw/2, fy + fh);
+    ctx.setLineDash([]);
+    ctx.moveTo(cx, fy);
+    ctx.lineTo(cx, fy + fh);
     ctx.stroke();
-    // 센터 서클
+
+    // 센터 서클 (반지름 66px — 실제 비율 9.15m)
     ctx.beginPath();
-    ctx.arc(fx+fw/2, fy+fh/2, 30, 0, Math.PI*2);
+    ctx.arc(cx, cy, 66, 0, Math.PI*2);
     ctx.stroke();
-    // 골대
-    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-    ctx.lineWidth = 2;
-    const goalH = 120;
-    ctx.strokeRect(fx-5, fy+fh/2 - goalH/2, 5, goalH);
-    ctx.strokeRect(fx+fw, fy+fh/2 - goalH/2, 5, goalH);
+
+    // 센터 하프웨이 마크
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 3, 0, Math.PI*2);
+    ctx.fill();
+
+    // === 페널티 박스 (18야드) ===
+    const paW = 125;  // 16.5m 비율
+    const paH = 150;  // 40.3m 비율
+    const paY = cy - paH/2;
+    // 왼쪽
+    ctx.strokeRect(fx, paY, paW, paH);
+    // 오른쪽
+    ctx.strokeRect(fx + fw - paW, paY, paW, paH);
+
+    // === 골 에어리어 (6야드) ===
+    const gaW = 42, gaH = 61;
+    const gaY = cy - gaH/2;
+    ctx.strokeRect(fx, gaY, gaW, gaH);
+    ctx.strokeRect(fx + fw - gaW, gaY, gaW, gaH);
+
+    // === 페널티 마크 (11m) ===
+    const pmDist = 80; // 760 * 0.105
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.beginPath();
+    ctx.arc(fx + pmDist, cy, 3, 0, Math.PI*2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(fx + fw - pmDist, cy, 3, 0, Math.PI*2);
+    ctx.fill();
+
+    // === 페널티 아크 (벤치 바깥) ===
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(fx + pmDist, cy, 50, -0.6, 0.6);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(fx + fw - pmDist, cy, 50, Math.PI - 0.6, Math.PI + 0.6);
+    ctx.stroke();
+
+    // === 코너 아크 (각 모서리 방향에 맞게) ===
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+    ctx.lineWidth = 1;
+    const cornerR = 10;
+    [
+      {x:fx,      y:fy,      s:0,         e:Math.PI/2},
+      {x:fx+fw,   y:fy,      s:Math.PI/2, e:Math.PI},
+      {x:fx,      y:fy+fh,   s:3*Math.PI/2,e:2*Math.PI},
+      {x:fx+fw,   y:fy+fh,   s:Math.PI,   e:3*Math.PI/2}
+    ].forEach(p => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, cornerR, p.s, p.e);
+      ctx.stroke();
+    });
+
+    // === 골대 (양옆) ===
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 3;
+    const postInset = 2; // 골대 안쪽 살짝
+    // 왼쪽 골대
+    ctx.strokeRect(fx - postInset, cy - goalH/2, 3, goalH);
+    // 오른쪽 골대
+    ctx.strokeRect(fx + fw - postInset, cy - goalH/2, 3, goalH);
+    // 골대 윗가로대 (크로스바)
+    ctx.strokeRect(fx - 6, cy - goalH/2 - 1, 9, 2);
+    ctx.strokeRect(fx + fw - 3, cy - goalH/2 - 1, 9, 2);
 
     // ===== 공 =====
     ctx.beginPath();
