@@ -1042,6 +1042,9 @@
     passTarget: null,  // 패스 대상 좌표
     passSpeed: 300,
     hasBall: null,     // 공 가진 선수 id
+    sliding: null,     // { player, timer, dirX, dirY } — 슬라이딩 태클 상태
+    ballCurve: 0,      // 감아차기 커브
+    skillCooldown: 0,  // 개인기 쿨다운
   };
 
   function getClubColor(clubId) {
@@ -1076,6 +1079,9 @@
     GAME.kickoff = 'me';
     GAME.kickoffTimer = 0;
     GAME.passTargetId = null; // 패스 받을 선수 (컨트롤 전환용)
+    GAME.sliding = null;
+    GAME.ballCurve = 0;
+    GAME.skillCooldown = 0;
 
     // 내 팀 선수 배치
     const f = getFormation(state.formation);
@@ -1225,26 +1231,79 @@
       if (GAME.keys['ArrowDown']) dy = 1;
       if (dx !== 0 || dy !== 0) {
         const len = Math.sqrt(dx*dx + dy*dy);
-        ctrl.vx = (dx/len) * ctrl.speed * dt;
-        ctrl.vy = (dy/len) * ctrl.speed * dt;
+        // C키 등지기/견제 (속도 0.6배, E 질주 불가)
+        const cHold = GAME.keys['KeyC'] || GAME.keys['c'];
+        const eHold = (GAME.keys['KeyE'] || GAME.keys['e']) && !cHold;
+        const speedMul = cHold ? 0.6 : (eHold ? 1.5 : 1);
+        const moveSpeed = ctrl.speed * speedMul;
+        ctrl.vx = (dx/len) * moveSpeed * dt;
+        ctrl.vy = (dy/len) * moveSpeed * dt;
         ctrl.x += ctrl.vx;
         ctrl.y += ctrl.vy;
         clampPlayer(ctrl);
-        // 공을 가졌으면 공도 따라옴
+        // 공을 가졌을 때 — 질주 시 공이 살짝 앞으로
         if (GAME.hasBall === ctrl.id) {
-          GAME.ball.x = ctrl.x;
-          GAME.ball.y = ctrl.y - 10;
-          GAME.ball.vx = 0;
-          GAME.ball.vy = 0;
+          if (sprintMul > 1) {
+            GAME.ball.x += (ctrl.vx * 1.5 - GAME.ball.vx * 0.5);
+            GAME.ball.y += (ctrl.vy * 1.5 - GAME.ball.vy * 0.5);
+            GAME.ball.vx += (ctrl.vx * 0.3);
+            GAME.ball.vy += (ctrl.vy * 0.3);
+          } else {
+            GAME.ball.x = ctrl.x;
+            GAME.ball.y = ctrl.y - 10;
+            GAME.ball.vx = 0;
+            GAME.ball.vy = 0;
+          }
         }
       } else {
         ctrl.vx *= 0.9;
         ctrl.vy *= 0.9;
       }
+      // C키 등지기/견제 효과 (움직임과 무관)
+      if (GAME.keys['KeyC'] || GAME.keys['c']) {
+        if (GAME.hasBall === ctrl.id) {
+          // 공격: 등지고 볼 보호 — 주변 수비수 밀어내기
+          GAME.aiTeam.forEach(p => {
+            const d = dist(ctrl.x, ctrl.y, p.x, p.y);
+            if (d < 30 && d > 1) {
+              const push = 40 * dt;
+              p.x += (p.x - ctrl.x) / d * push;
+              p.y += (p.y - ctrl.y) / d * push;
+              clampPlayer(p);
+            }
+          });
+        } else {
+          // 수비: 견제 자세 — 공 쪽을 바라보며 느리게 이동
+          // 속도는 위에서 0.6배로 처리됨
+        }
+      }
     }
 
-    // 패스/선수 변경 키 (S)
-    if ((GAME.keys['KeyS'] || GAME.keys['s']) && ctrl) {
+    // 슬라이딩 태클 업데이트
+    if (GAME.sliding) {
+      const sl = GAME.sliding;
+      sl.timer -= dt;
+      sl.player.x += sl.vx * dt;
+      sl.player.y += sl.vy * dt;
+      clampPlayer(sl.player);
+      // 슬라이딩 중 공 뺏기 체크
+      const ballCarrier = GAME.aiTeam.find(p => GAME.hasBall === p.id);
+      if (ballCarrier && dist(sl.player.x, sl.player.y, ballCarrier.x, ballCarrier.y) < 35) {
+        GAME.ball.x = sl.player.x;
+        GAME.ball.y = sl.player.y - 10;
+        GAME.ball.vx = sl.vx * 0.3;
+        GAME.ball.vy = sl.vy * 0.3;
+        GAME.hasBall = sl.player.id;
+        GAME.controlledIdx = GAME.myTeam.indexOf(sl.player);
+        GAME.sliding = null;
+      }
+      if (sl.timer <= 0) {
+        GAME.sliding = null;
+      }
+    }
+
+    // 패스/선수 변경 키 (S) — 슬라이딩 중 무시
+    if ((GAME.keys['KeyS'] || GAME.keys['s']) && ctrl && !GAME.sliding) {
       if (GAME.hasBall === ctrl.id) {
         passBall();
       } else {
@@ -1262,10 +1321,48 @@
       GAME.keys['KeyS'] = false; GAME.keys['s'] = false;
     }
 
-    // 슛 키 (D) — 상대 골대 방향
-    if ((GAME.keys['KeyD'] || GAME.keys['d']) && ctrl && GAME.hasBall === ctrl.id) {
-      shootBall();
+    // D키 — 공격=슛, 수비=걷어내기
+    if ((GAME.keys['KeyD'] || GAME.keys['d']) && ctrl) {
+      if (GAME.hasBall === ctrl.id) {
+        const zHold = GAME.keys['KeyZ'] || GAME.keys['z'];
+        const qHold = GAME.keys['KeyQ'] || GAME.keys['q'];
+        if (zHold) finesseShot();
+        else if (qHold) chipShot();
+        else shootBall();
+      } else if (!GAME.sliding) {
+        // 걷어내기 (공 가까이서 D)
+        const ballDist = dist(ctrl.x, ctrl.y, GAME.ball.x, GAME.ball.y);
+        if (ballDist < 40) {
+          const dx = 795 - ctrl.x;
+          const dy = (230 + (Math.random() - 0.5) * 100) - ctrl.y;
+          const d = Math.sqrt(dx*dx + dy*dy) || 1;
+          GAME.ball.vx = (dx/d) * 400;
+          GAME.ball.vy = (dy/d) * 400;
+        }
+      }
       GAME.keys['KeyD'] = false; GAME.keys['d'] = false;
+    }
+
+    // Shift+방향키 개인기 — 빠른 방향 전환 (공 있을 때)
+    GAME.skillCooldown -= dt;
+    if ((GAME.keys['ShiftLeft'] || GAME.keys['ShiftRight']) && ctrl && GAME.hasBall === ctrl.id && GAME.skillCooldown <= 0) {
+      let sx = 0, sy = 0;
+      if (GAME.keys['ArrowLeft'] || GAME.keys['ArrowRight'] || GAME.keys['ArrowUp'] || GAME.keys['ArrowDown']) {
+        if (GAME.keys['ArrowLeft']) sx = -1;
+        if (GAME.keys['ArrowRight']) sx = 1;
+        if (GAME.keys['ArrowUp']) sy = -1;
+        if (GAME.keys['ArrowDown']) sy = 1;
+        if (sx !== 0 || sy !== 0) {
+          const sl = Math.sqrt(sx*sx + sy*sy);
+          const burst = ctrl.speed * 2.5 * dt;
+          ctrl.x += (sx/sl) * burst * 3;
+          ctrl.y += (sy/sl) * burst * 3;
+          clampPlayer(ctrl);
+          GAME.ball.x = ctrl.x;
+          GAME.ball.y = ctrl.y - 10;
+          GAME.skillCooldown = 0.4;
+        }
+      }
     }
 
     // 스루 패스 키 (W) — 방향키 방향 빈 공간으로 전진 패스
@@ -1274,9 +1371,13 @@
       GAME.keys['KeyW'] = false; GAME.keys['w'] = false;
     }
 
-    // 로빙패스 키 (A) — 공 있을 때만
-    if ((GAME.keys['KeyA'] || GAME.keys['a']) && ctrl && GAME.hasBall === ctrl.id) {
-      lobPass();
+    // A키 — 공격=로빙패스, 수비=슬라이딩 태클
+    if ((GAME.keys['KeyA'] || GAME.keys['a']) && ctrl) {
+      if (GAME.hasBall === ctrl.id) {
+        lobPass();
+      } else if (!GAME.sliding) {
+        slideTackle(ctrl);
+      }
       GAME.keys['KeyA'] = false; GAME.keys['a'] = false;
     }
 
@@ -1300,6 +1401,12 @@
     // 공 이동
     GAME.ball.x += GAME.ball.vx * dt;
     GAME.ball.y += GAME.ball.vy * dt;
+    // 감아차기 커브 효과
+    if (GAME.ballCurve) {
+      GAME.ball.vy += GAME.ballCurve * dt;
+      GAME.ballCurve *= 0.97;
+      if (Math.abs(GAME.ballCurve) < 1) GAME.ballCurve = 0;
+    }
     GAME.ball.vx *= 0.98;
     GAME.ball.vy *= 0.98;
 
@@ -1487,6 +1594,26 @@
         clampPlayer(p);
       }
     });
+
+    // Q키 수비 압박 — 가장 가까운 내 선수가 공 쪽으로 전력 질주
+    if (GAME.keys['KeyQ'] || GAME.keys['q']) {
+      let nearestAI = null;
+      let minDistAI = 999;
+      GAME.myTeam.forEach((p, i) => {
+        if (i === GAME.controlledIdx) return;
+        const d = dist(p.x, p.y, GAME.ball.x, GAME.ball.y);
+        if (d < minDistAI) { minDistAI = d; nearestAI = p; }
+      });
+      if (nearestAI) {
+        const dx = GAME.ball.x - nearestAI.x;
+        const dy = GAME.ball.y - nearestAI.y;
+        const d = Math.sqrt(dx*dx + dy*dy) || 1;
+        const pressSpeed = nearestAI.speed * 1.3 * dt;
+        nearestAI.x += (dx/d) * pressSpeed;
+        nearestAI.y += (dy/d) * pressSpeed;
+        clampPlayer(nearestAI);
+      }
+    }
 
     // 공 소유 선수 따라가기 (소유자가 공을 따라 움직이게)
     let ballHolder = null;
@@ -1691,13 +1818,42 @@
   function shootBall() {
     const ctrl = GAME.myTeam[GAME.controlledIdx];
     if (!ctrl) return;
-    // AI 골대 방향으로 슛 (오른쪽)
     const targetY = 230 + (Math.random() - 0.5) * 80;
     const dx = 795 - ctrl.x;
     const dy = targetY - ctrl.y;
     const d = Math.sqrt(dx*dx + dy*dy);
     GAME.ball.vx = (dx/d) * 500;
     GAME.ball.vy = (dy/d) * 500;
+    GAME.hasBall = null;
+  }
+
+  function finesseShot() {
+    const ctrl = GAME.myTeam[GAME.controlledIdx];
+    if (!ctrl) return;
+    // 감아차기 — 골대 구석으로 휘어짐 (정확도↑ 속도↓)
+    const corner = Math.random() > 0.5 ? 180 : 280;
+    const targetY = corner + (Math.random() - 0.5) * 20;
+    const dx = 795 - ctrl.x;
+    const dy = targetY - ctrl.y;
+    const d = Math.sqrt(dx*dx + dy*dy);
+    GAME.ball.vx = (dx/d) * 420;
+    GAME.ball.vy = (dy/d) * 420;
+    // 회전 효과 — vy가 시간에 따라 추가 변화 (곡선)
+    GAME.ballCurve = (targetY > 230 ? 1 : -1) * 60;
+    GAME.hasBall = null;
+  }
+
+  function chipShot() {
+    const ctrl = GAME.myTeam[GAME.controlledIdx];
+    if (!ctrl) return;
+    // 칩슛 — 높은 궤적 (느리지만 GK 키 넘김)
+    const targetY = 230 + (Math.random() - 0.5) * 60;
+    const dx = 795 - ctrl.x;
+    const dy = targetY - ctrl.y;
+    const d = Math.sqrt(dx*dx + dy*dy);
+    // vy에 상향 성분 추가 (마이너스 = 위로)
+    GAME.ball.vx = (dx/d) * 350;
+    GAME.ball.vy = (dy/d) * 350 - 80;
     GAME.hasBall = null;
   }
 
@@ -1734,6 +1890,29 @@
     alert(`경기 종료! ${GAME.score.me} : ${GAME.score.ai} ${msg}`);
     renderHome();
     showScreen('screen-home');
+  }
+
+  function getMoveDir() {
+    let dx = 0, dy = 0;
+    if (GAME.keys['ArrowLeft']) dx = -1;
+    if (GAME.keys['ArrowRight']) dx = 1;
+    if (GAME.keys['ArrowUp']) dy = -1;
+    if (GAME.keys['ArrowDown']) dy = 1;
+    if (dx === 0 && dy === 0) return null;
+    const len = Math.sqrt(dx*dx + dy*dy);
+    return { dx: dx/len, dy: dy/len };
+  }
+
+  function slideTackle(player) {
+    const dir = getMoveDir();
+    if (!dir) return; // 방향키 입력 없으면 안 함
+    const slideSpeed = player.speed * 2.5;
+    GAME.sliding = {
+      player: player,
+      timer: 0.6,
+      vx: dir.dx * slideSpeed,
+      vy: dir.dy * slideSpeed
+    };
   }
 
   function onKeyDown(e) {
@@ -1843,7 +2022,7 @@
     ctx.fillStyle = 'rgba(255,255,255,0.4)';
     ctx.font = '10px "Jua", sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText('방향키:이동  S:패스/변경  A:로빙  W:스루  D:슛  Space:뺏기', 25, 440);
+    ctx.fillText('↑↓←:이동  E:질주  S:패스/변경  A:로빙/태클  W:스루  D:슛  C:등지기/견제  Q:압박  Z+D:감아  Q+D:칩  Space:뺏기', 25, 440);
   }
 
   function drawPlayer(ctx, p, teamColor, isControlled, hasBall) {
