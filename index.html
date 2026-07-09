@@ -1049,7 +1049,7 @@
     skillCooldown: 0,  // 개인기 쿨다운
     charge: null,      // { key, power, dir, zHold, qHold } — 파워 게이지
     CHARGE_SPEED: 1.2, // 게이지 차는 속도 (0→1까지 초)
-    camera: { x: 400, y: 225, tx: 400, ty: 225, zoom: 1.5 },
+    camera: { x: 400, y: 225, tx: 400, ty: 225, zoom: 3.5 },
   };
 
   function getClubColor(clubId) {
@@ -1759,10 +1759,9 @@
         const tdy = p.y - ctrl.y;
         const td = Math.sqrt(tdx*tdx + tdy*tdy);
         if (td < 10) return;
-        // 내적 (cosine) × 거리 가중치
         const dot = (tdx/td) * dir.dx + (tdy/td) * dir.dy;
-        const score = dot * (1 - td / 400);
-        if (score > bestScore && dot > 0.3) {
+        const score = dot * (1 - td / 500);
+        if (score > bestScore && dot > 0.2) {
           bestScore = score;
           target = p;
         }
@@ -1774,7 +1773,7 @@
       GAME.myTeam.forEach((p, i) => {
         if (i === GAME.controlledIdx) return;
         const d = dist(ctrl.x, ctrl.y, p.x, p.y);
-        if (d < minDist && d < 300) {
+        if (d < minDist && d < 450) {
           minDist = d;
           target = p;
         }
@@ -1788,7 +1787,10 @@
       GAME.ball.vx = (dx/d) * speed;
       GAME.ball.vy = (dy/d) * speed;
       GAME.hasBall = null;
-      GAME.passTargetId = target.id; // 패스 받을 선수 저장 (아직 전환 안 함)
+      GAME.passTargetId = target.id;
+      // 즉시 컨트롤 전환
+      const idx = GAME.myTeam.indexOf(target);
+      if (idx !== -1) GAME.controlledIdx = idx;
     }
   }
 
@@ -1833,6 +1835,8 @@
       GAME.ball.vy = (dy/d) * speed;
       GAME.hasBall = null;
       GAME.passTargetId = target.id;
+      const idx = GAME.myTeam.indexOf(target);
+      if (idx !== -1) GAME.controlledIdx = idx;
     }
   }
 
@@ -1851,7 +1855,6 @@
       const td = Math.sqrt(tdx*tdx + tdy*tdy);
       if (td < 20) return;
       const dot = (tdx/td) * dir.dx + (tdy/td) * dir.dy;
-      // 멀리 있고 방향에 맞는 선수에게 우선순위
       const score = dot * td;
       if (score > bestScore && dot > 0.4) {
         bestScore = score;
@@ -1859,7 +1862,6 @@
       }
     });
     if (!target) {
-      // 타겟 없으면 방향으로 그냥 띄워줌
       const speed = 350 * (0.6 + power * 0.6);
       GAME.ball.vx = dir.dx * speed;
       GAME.ball.vy = dir.dy * speed;
@@ -1877,6 +1879,11 @@
     GAME.ball.vx = (dx/d) * speed;
     GAME.ball.vy = (dy/d) * speed;
     GAME.hasBall = null;
+    if (target) {
+      GAME.passTargetId = target.id;
+      const idx = GAME.myTeam.indexOf(target);
+      if (idx !== -1) GAME.controlledIdx = idx;
+    }
   }
 
   function shootBall(power) {
