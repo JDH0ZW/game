@@ -1327,12 +1327,16 @@
       if (!GAME.charge && GAME.hasBall === ctrl.id) {
         if (dDown) {
           GAME.charge = { key:'D', power:0, dir:1, zHold:!!(GAME.keys['KeyZ']||GAME.keys['z']), qHold:!!(GAME.keys['KeyQ']||GAME.keys['q']) };
+          console.log('⚡ CHARGE D start');
         } else if (sDown) {
           GAME.charge = { key:'S', power:0, dir:1 };
+          console.log('⚡ CHARGE S start');
         } else if (aDown) {
           GAME.charge = { key:'A', power:0, dir:1 };
+          console.log('⚡ CHARGE A start');
         } else if (wDown) {
           GAME.charge = { key:'W', power:0, dir:1 };
+          console.log('⚡ CHARGE W start');
         }
       }
 
@@ -2006,6 +2010,7 @@
     if (GAME.charge && GAME.running) {
       const chargeMap = { 'KeyD':'D', 'KeyS':'S', 'KeyW':'W', 'KeyA':'A' };
       const chKey = chargeMap[e.code];
+      console.log('🎮 keyup code='+e.code+' charge.key='+GAME.charge.key+' chKey='+chKey+' match='+(chKey && chKey === GAME.charge.key));
       if (chKey && chKey === GAME.charge.key) {
         executeChargedAction();
         GAME.charge = null;
@@ -2187,7 +2192,7 @@
 
     // 디버그 정보
     ctx.fillStyle = 'rgba(0,0,0,0.8)';
-    ctx.fillRect(5, 50, 350, 130);
+    ctx.fillRect(5, 50, 350, 145);
     ctx.fillStyle = '#FFCD75';
     ctx.font = '10px "Jua", sans-serif';
     ctx.textAlign = 'left';
@@ -2202,7 +2207,8 @@
     ctx.fillText('S:' + (GAME.keys['KeyS']||GAME.keys['s']?'Y':'n') + ' D:' + (GAME.keys['KeyD']||GAME.keys['d']?'Y':'n') + ' W:' + (GAME.keys['KeyW']||GAME.keys['w']?'Y':'n') + ' A:' + (GAME.keys['KeyA']||GAME.keys['a']?'Y':'n'), 10, 119);
     ctx.fillText('내팀위치: ' + GAME.myTeam.map((p,i)=>i+':'+Math.round(p.x)+','+Math.round(p.y)).join(' '), 10, 133);
     ctx.fillText('공:' + Math.round(GAME.ball.x)+','+Math.round(GAME.ball.y), 10, 147);
-    ctx.fillText('cam:' + Math.round(cam.x)+','+Math.round(cam.y)+' z:'+cam.zoom.toFixed(1), 10, 161);
+    ctx.fillText('충전:' + (GAME.charge ? GAME.charge.key+' p:'+GAME.charge.power.toFixed(2) : '없음'), 10, 161);
+    ctx.fillText('cam:' + Math.round(cam.x)+','+Math.round(cam.y)+' z:'+cam.zoom.toFixed(1), 10, 175);
 
     // 조작 안내
     ctx.fillStyle = 'rgba(255,255,255,0.4)';
