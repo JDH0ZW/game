@@ -1355,14 +1355,41 @@
           GAME.keys['KeyD'] = false; GAME.keys['d'] = false;
         }
         if (sDown && notCharging('S')) {
-          let nearest = null, minDist = 999;
-          GAME.myTeam.forEach((p, i) => {
-            const d = dist(p.x, p.y, GAME.ball.x, GAME.ball.y);
-            if (d < minDist) { minDist = d; nearest = i; }
-          });
-          if (nearest !== null && nearest !== GAME.controlledIdx) {
-            GAME.controlledIdx = nearest;
-            const newCtrl = GAME.myTeam[nearest];
+          let switchIdx = null;
+          // 1) 방향키(↑↓←→)가 눌렸으면 그 방향에 있는 팀원으로 전환
+          const swDir = getMoveDir();
+          if (swDir) {
+            let bestScore = -Infinity;
+            GAME.myTeam.forEach((p, i) => {
+              if (i === GAME.controlledIdx) return;
+              const dx = p.x - ctrl.x;
+              const dy = p.y - ctrl.y;
+              const d = Math.sqrt(dx*dx + dy*dy);
+              if (d < 5) return;
+              const dot = (dx/d) * swDir.dx + (dy/d) * swDir.dy;
+              const score = dot * (1 - d / 600);
+              if (score > bestScore && dot > 0.3) {
+                bestScore = score;
+                switchIdx = i;
+              }
+            });
+          }
+          // 2) 방향키 없음 → 공 가진 팀원 우선, 없으면 공에 가장 가까운 팀원
+          if (switchIdx === null) {
+            const ballCarrier = GAME.myTeam.find(p => GAME.hasBall === p.id);
+            if (ballCarrier) {
+              switchIdx = GAME.myTeam.indexOf(ballCarrier);
+            } else {
+              let minDist = 999;
+              GAME.myTeam.forEach((p, i) => {
+                const d = dist(p.x, p.y, GAME.ball.x, GAME.ball.y);
+                if (d < minDist) { minDist = d; switchIdx = i; }
+              });
+            }
+          }
+          if (switchIdx !== null && switchIdx !== GAME.controlledIdx) {
+            GAME.controlledIdx = switchIdx;
+            const newCtrl = GAME.myTeam[switchIdx];
             const aiBall = GAME.aiTeam.find(p => GAME.hasBall === p.id);
             if (aiBall && dist(newCtrl.x, newCtrl.y, aiBall.x, aiBall.y) < 35) {
               GAME.hasBall = newCtrl.id;
@@ -2214,7 +2241,12 @@
     ctx.fillStyle = 'rgba(255,255,255,0.4)';
     ctx.font = '10px "Jua", sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText('↑↓←:이동  E:질주  S/패스  A/로빙  W/스루  D/슛  (꾹→게이지)  C:등지기/견제  Q:압박  Z+D:감아  Q+D:칩  Space:뺏기  SHIFT:개인기', 25, 440);
+    ctx.fillText('↑↓←:이동  E:질주  S/패스(전환)  A/로빙  W/스루  D/슛  (꾹→게이지)  C:등지기/견제  Q:압박  Z+D:감아  Q+D:칩  Space:뺏기  SHIFT:개인기', 25, 440);
+
+    // 오프스크린 → 메인 캔버스 2배 확대
+    const mc = GAME.ctx;
+    mc.imageSmoothingEnabled = true;
+    mc.drawImage(GAME._offCanvas, 0, 0, 1600, 900);
   }
 
   function drawPlayer(ctx, p, teamColor, isControlled, hasBall) {
@@ -2266,11 +2298,6 @@
     }
 
     ctx.textBaseline = 'alphabetic';
-
-    // 오프스크린 → 메인 캔버스 2배 확대 (부드럽게)
-    const mc = GAME.ctx;
-    mc.imageSmoothingEnabled = true;
-    mc.drawImage(GAME._offCanvas, 0, 0, 1600, 900);
   }
 
   init();
