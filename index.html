@@ -7,7 +7,7 @@
   <!-- 둥근모 픽셀 폰트 (한글+영문) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Jua&family=Press+Start+2P&display=swap" rel="stylesheet">
   <style>
     /* ===== 레트로 픽셀 팔레트 ===== */
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -15,7 +15,7 @@
       width: 100%; height: 100%;
       background: #1A1C2C;
       color: #F4F4F4;
-      font-family: 'Black Han Sans', 'Press Start 2P', sans-serif;
+      font-family: 'Jua', 'Press Start 2P', sans-serif;
       overflow: hidden;
     }
     body {
@@ -53,7 +53,7 @@
 
     /* ===== 공통 버튼 ===== */
     .btn {
-      font-family: 'Black Han Sans', sans-serif;
+      font-family: 'Jua', sans-serif;
       background: #FFCD75;
       color: #1A1C2C;
       border: none;
@@ -209,7 +209,7 @@
       border: none;
       border-radius: 3px;
       cursor: pointer;
-      font-family: 'Black Han Sans', sans-serif;
+      font-family: 'Jua', sans-serif;
     }
     .btn-reg.on { background: #22D3EE; color: #1A1C2C; }
     .btn-reg.off { background: #555; color: #999; }
@@ -845,7 +845,7 @@
     formBar.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;justify-content:center;';
     FORMATIONS.forEach(f => {
       const btn = document.createElement('button');
-      btn.style.cssText = `padding:4px 8px;font-size:11px;font-family:'Black Han Sans',sans-serif;border:none;border-radius:3px;cursor:pointer;${f.name === state.formation ? 'background:#FFCD75;color:#1A1C2C;' : 'background:#2A2D40;color:#F4F4F4;border:1px solid #3A3D50;'}`;
+      btn.style.cssText = `padding:4px 8px;font-size:11px;font-family:'Jua',sans-serif;border:none;border-radius:3px;cursor:pointer;${f.name === state.formation ? 'background:#FFCD75;color:#1A1C2C;' : 'background:#2A2D40;color:#F4F4F4;border:1px solid #3A3D50;'}`;
       btn.textContent = f.name;
       btn.onclick = () => changeFormation(f.name);
       formBar.appendChild(btn);
@@ -1789,12 +1789,12 @@
 
     // ===== HUD =====
     ctx.fillStyle = '#FFCD75';
-    ctx.font = '16px "Black Han Sans", sans-serif';
+    ctx.font = '16px "Jua", sans-serif';
     ctx.textAlign = 'center';
     const aiClubName = GAME.aiClubName || '???';
     ctx.fillText(`${getClubName(state.clubId)} ${GAME.score.me} : ${GAME.score.ai} ${aiClubName}`, 400, 25);
 
-    ctx.font = '14px "Black Han Sans", sans-serif';
+    ctx.font = '14px "Jua", sans-serif';
     ctx.fillStyle = '#F4F4F4';
     const halfText = GAME.half === 1 ? '전반' : '후반';
     ctx.fillText(`${halfText} ${Math.floor(GAME.time)}초`, 400, 48);
@@ -1803,7 +1803,7 @@
     ctx.fillStyle = 'rgba(0,0,0,0.8)';
     ctx.fillRect(5, 50, 350, 130);
     ctx.fillStyle = '#FFCD75';
-    ctx.font = '10px "Black Han Sans", sans-serif';
+    ctx.font = '10px "Jua", sans-serif';
     ctx.textAlign = 'left';
     const ctrlP = GAME.myTeam[GAME.controlledIdx];
     const ctrlId = ctrlP?.id || 'none';
@@ -1841,7 +1841,7 @@
 
     // ===== 조작 안내 =====
     ctx.fillStyle = 'rgba(255,255,255,0.4)';
-    ctx.font = '10px "Black Han Sans", sans-serif';
+    ctx.font = '10px "Jua", sans-serif';
     ctx.textAlign = 'left';
     ctx.fillText('방향키:이동  S:패스/변경  A:로빙  W:스루  D:슛  Space:뺏기', 25, 440);
   }
@@ -1864,7 +1864,7 @@
 
     if (isControlled) {
       ctx.fillStyle = '#22D3EE';
-      ctx.font = '10px "Black Han Sans", sans-serif';
+      ctx.font = '10px "Jua", sans-serif';
       ctx.textBaseline = 'bottom';
       ctx.fillText(p.name, p.x, p.y - r - 3);
 
